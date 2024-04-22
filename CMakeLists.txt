@@ -73,6 +73,13 @@ if (SQLite3_FOUND)
     add_library(SQLite3 ALIAS SQLite::SQLite3)
 endif()
 
-add_executable(whatmud src/main.cpp)
+add_executable(whatmud
+    src/lua/error.cpp
+    src/lua/stack.cpp
+    src/lua/state.cpp
+    src/lua/table_view.cpp
+    src/main.cpp
+    )
+target_include_directories(whatmud PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(whatmud PRIVATE fmt lua_lib spdlog::spdlog SQLite3 uv)
 install(TARGETS whatmud DESTINATION bin)
