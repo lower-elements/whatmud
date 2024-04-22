@@ -74,6 +74,7 @@ if (SQLite3_FOUND)
 endif()
 
 add_executable(whatmud
+    src/engine.cpp
     src/lua/error.cpp
     src/lua/stack.cpp
     src/lua/state.cpp
