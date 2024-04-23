@@ -95,6 +95,7 @@ add_executable(whatmud
     src/main.cpp
     src/uv/error.cpp
     src/uv/handle.cpp
+    src/uv/loop.cpp
     src/uv/stream.cpp
     src/uv/tcp.cpp
     )
