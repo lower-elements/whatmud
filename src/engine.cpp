@@ -1,5 +1,6 @@
 #include <stdexcept>
 
+#include "spdlog/spdlog.h"
 #include <fmt/core.h>
 
 #include "engine.hpp"
@@ -7,21 +8,19 @@
 
 namespace whatmud {
 
-Engine::Engine() : L() {
-  int res = uv_loop_init(&m_loop);
-  uv::check_error(res, "Could not create event loop");
+Engine::Engine() : L(), m_loop(), m_server_socket(m_loop.asLoop(), AF_INET) {
+  struct sockaddr_in addr;
+  int res = uv_ip4_addr("0.0.0.0", 9009, &addr);
+  uv::check_error(res, "Could not create address for server socket");
+  m_server_socket.bind((const struct sockaddr *)&addr);
+  m_server_socket.listen(32, [](uv_stream_t *server, int status) {
+    uv::check_error(status, "Could not listen for incoming connections");
+    spdlog::info("New connection!");
+  });
 }
 
-Engine::~Engine() {
-  if (uv_loop_alive(&m_loop)) {
-    int res = uv_loop_close(&m_loop);
-    uv::check_error(res, "Could not close event loop");
-  }
-}
+Engine::~Engine() {}
 
-void Engine::run() {
-  int res = uv_run(&m_loop, UV_RUN_DEFAULT);
-  uv::check_error(res, "Error running event loop");
-}
+void Engine::run() { m_loop.run(); }
 
 } // namespace whatmud

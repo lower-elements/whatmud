@@ -4,6 +4,8 @@
 #include <uv.h>
 
 #include "lua/state.hpp"
+#include "uv/loop.hpp"
+#include "uv/tcp.hpp"
 
 namespace whatmud {
 
@@ -16,7 +18,8 @@ public:
 
 private:
   lua::State L;
-  uv_loop_t m_loop;
+  uv::Loop m_loop;
+  uv::TCP m_server_socket;
 };
 
 } // namespace whatmud
