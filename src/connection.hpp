@@ -16,6 +16,9 @@ public:
 
   void accept(uv::TCP &server_sock);
 
+  telnet_t *getTelnet() { return m_telnet; }
+  const telnet_t *getTelnet() const { return m_telnet; }
+
 protected:
   void onEvent(telnet_event_t &ev);
 
