@@ -3,6 +3,8 @@
 
 namespace whatmud::uv {
 
+TCP::TCP() {}
+
 TCP::TCP(uv_loop_t *loop) {
   int res = uv_tcp_init(loop, &m_handle);
   uv::check_error(res);

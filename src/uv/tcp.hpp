@@ -7,6 +7,7 @@ namespace whatmud::uv {
 
 class TCP : public Stream {
 public:
+  TCP(); // Uninitialised, used when accepting connections
   TCP(uv_loop_t *loop);
   TCP(uv_loop_t *loop, unsigned flags);
 
