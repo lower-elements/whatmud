@@ -21,12 +21,16 @@ public:
 
 protected:
   void onEvent(telnet_event_t &ev);
+  void onEof();
+
+  void sendData(const char *buf, std::size_t size);
 
 private:
   telnet_t *m_telnet;
 
   friend void forwardEvent(telnet_t *telnet, telnet_event_t *event,
                            void *user_data);
+  void friend onRead(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf);
 };
 
 } // namespace whatmud

@@ -1,5 +1,7 @@
 #include <stdexcept>
 
+#include <spdlog/spdlog.h>
+
 #include "connection.hpp"
 #include "uv/error.hpp"
 
@@ -12,14 +14,21 @@ static void allocBuffer(uv_handle_t *handle, std::size_t suggested_size,
   buf->len = suggested_size;
 }
 
-static void onRead(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
+void onRead(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
+  Connection *conn = reinterpret_cast<Connection *>(handle->data);
+
   if (nread == 0) {
-    return;
+    return; // EAGAIN
+  } else if (nread == UV_EOF) {
+    conn->onEof();
   } else if (nread < 0) {
     throw uv::Error((int)nread, "Read error");
   }
-  Connection *conn = reinterpret_cast<Connection *>(handle->data);
+
+  // Process input with libtelnet
   telnet_recv(conn->getTelnet(), buf->base, nread);
+
+  // Free the buffer
   if (buf->base != nullptr) {
     delete[] buf->base;
   }
@@ -52,6 +61,39 @@ Connection::~Connection() {
   }
 }
 
-void Connection::onEvent(telnet_event_t &ev) { (void)ev; }
+void Connection::onEvent(telnet_event_t &ev) {
+  switch (ev.type) {
+  case TELNET_EV_SEND:
+    sendData(ev.data.buffer, ev.data.size);
+    break;
+  default:
+    spdlog::debug("Ignoring telnet event with type {}", ev.type);
+    break;
+  }
+}
+
+void Connection::onEof() {
+  spdlog::info("Connection got EOF, closing");
+  close();
+}
+
+void Connection::sendData(const char *buf, std::size_t size) {
+  // Copy the data into a libuv buffer
+  uv_buf_t writebuf;
+  writebuf.base = new char[size];
+  std::memcpy(writebuf.base, buf, size);
+  writebuf.len = size;
+
+  // Start a write request
+  // `req` is deleted by the write callback, as is the buffer memory
+  uv_write_t *req = new uv_write_t;
+  req->data = writebuf.base;
+  write(req, &writebuf, [](uv_write_t *req, int status) {
+    char *writebuf = (char *)req->data;
+    delete[] writebuf;
+    delete req;
+    uv::check_error(status, "Write error");
+  });
+}
 
 } // namespace whatmud
