@@ -93,6 +93,7 @@ add_executable(whatmud
     src/lua/state.cpp
     src/lua/table_view.cpp
     src/main.cpp
+    src/uv/error.cpp
     )
 target_include_directories(whatmud PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(whatmud PRIVATE fmt telnet lua_lib spdlog::spdlog SQLite3 uv)
