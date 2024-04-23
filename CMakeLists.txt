@@ -28,6 +28,15 @@ FetchContent_Declare(
   FIND_PACKAGE_ARGS NAMES fmt
 )
 
+pkg_check_modules(telnet libtelnet)
+if(NOT telnet_FOUND)
+FetchContent_Declare(
+    libtelnet
+    GIT_REPOSITORY "https://github.com/seanmiddleditch/libtelnet"
+    GIT_TAG "5f5ecee776b9bdaa4e981e5f807079a9c79d633e"
+    )
+endif()
+
 pkg_check_modules(uv libuv)
 if(NOT uv_FOUND)
 FetchContent_Declare(
@@ -61,13 +70,17 @@ FetchContent_Declare(
 
 # Much fiddling with CMake to make sure deps work whether they're found or built
 FetchContent_MakeAvailable(fmt Lua spdlog SQLite3)
+if(NOT telnet_FOUND)
+    FetchContent_MakeAvailable(libtelnet)
+    add_library(telnet ALIAS libtelnet)
+endif()
+if(NOT uv_FOUND)
+    FetchContent_MakeAvailable(libuv)
+endif()
 if (LUA_FOUND)
     add_library(lua_lib INTERFACE)
     target_include_directories(lua_lib INTERFACE ${LUA_INCLUDE_DIR})
     target_link_libraries(lua_lib INTERFACE ${LUA_LIBRARIES})
-endif()
-if(NOT uv_FOUND)
-    FetchContent_MakeAvailable(libuv)
 endif()
 if (SQLite3_FOUND)
     add_library(SQLite3 ALIAS SQLite::SQLite3)
@@ -82,5 +95,5 @@ add_executable(whatmud
     src/main.cpp
     )
 target_include_directories(whatmud PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(whatmud PRIVATE fmt lua_lib spdlog::spdlog SQLite3 uv)
+target_link_libraries(whatmud PRIVATE fmt telnet lua_lib spdlog::spdlog SQLite3 uv)
 install(TARGETS whatmud DESTINATION bin)

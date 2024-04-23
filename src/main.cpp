@@ -1,4 +1,5 @@
 #include "engine.hpp"
+#include <libtelnet.h>
 
 namespace lua = whatmud::lua;
 
