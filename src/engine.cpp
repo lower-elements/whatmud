@@ -3,6 +3,7 @@
 #include "spdlog/spdlog.h"
 #include <fmt/core.h>
 
+#include "connection.hpp"
 #include "engine.hpp"
 #include "uv/error.hpp"
 
@@ -16,6 +17,9 @@ Engine::Engine() : L(), m_loop(), m_server_socket(m_loop.asLoop(), AF_INET) {
   m_server_socket.listen(32, [](uv_stream_t *server, int status) {
     uv::check_error(status, "Could not listen for incoming connections");
     spdlog::info("New connection!");
+    Connection *conn = new Connection(server->loop);
+    conn->accept(server);
+    // Leaks memory!
   });
 }
 

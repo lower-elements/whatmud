@@ -11,10 +11,10 @@ namespace whatmud {
 
 class Connection : protected uv::TCP {
 public:
-  Connection();
+  Connection(uv_loop_t *loop);
   ~Connection();
 
-  void accept(uv::TCP &server_sock);
+  void accept(uv_stream_t *server_sock);
 
   telnet_t *getTelnet() { return m_telnet; }
   const telnet_t *getTelnet() const { return m_telnet; }
