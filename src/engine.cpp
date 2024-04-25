@@ -14,7 +14,7 @@ namespace whatmud {
 // Forward declarations:
 int l_listen(lua_State *L);
 
-Engine::Engine(const char *dir_name) : L(), m_loop(), m_listeners(4) {
+Engine::Engine(const char *dir_name) : L(), m_loop(), m_listeners() {
   // // Register Lua configuration functions
   lua_pushlightuserdata(L, this);
   lua_pushcclosure(L, l_listen, 1);
@@ -28,6 +28,12 @@ Engine::Engine(const char *dir_name) : L(), m_loop(), m_listeners(4) {
     throw lua::Error(L, "Could not load game init script");
   }
   lua_call(L, 0, 0);
+
+  // Warn the user if no listeners were created
+  if (m_listeners.empty()) {
+    spdlog::warn("No listeners created, did you forget to call listen() in {}?",
+                 init_script);
+  }
 }
 
 Engine::~Engine() {}
