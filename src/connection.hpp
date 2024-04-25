@@ -26,6 +26,10 @@ public:
   telnet_t *getTelnet() { return m_telnet; }
   const telnet_t *getTelnet() const { return m_telnet; }
 
+  /**
+   * Send data to the client.
+   * Data is sent asynchronously by libuv.
+   */
   void send(const char *buf, std::size_t size) {
     telnet_send(m_telnet, buf, size);
   }
@@ -33,18 +37,29 @@ public:
   void send(const std::string &str) { send(str.c_str(), str.size()); }
   void send(std::string_view str) { send(str.data(), str.size()); }
 
-protected:
+protected: // Event handlers
+           // Called for each libtelnet event
   void onEvent(telnet_event_t &ev);
+  // Called when the client closes the connection
   void onEof();
+  // Called when data needs to be sent to the client
   void onSend(const char *buf, std::size_t size);
+  // Called when data is received from the client
   void onRecv(const char *buf, std::size_t size);
+  // Called for each message line
   void onMessage(const std::string &msg);
 
 private:
+  // Receive buffer, used to buffer message lines
   std::stringstream m_recv_buf;
+  // Message processor, checks for and handles messages
+  // We do this in a check handler instead of when data is received for more
+  // fair distribution of CPU time per client
   uv::Check m_msg_proc;
+  // Libtelnet state tracker
   telnet_t *m_telnet;
 
+  // Friend functions used to call event handler member methods
   friend void onRead(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf);
   friend void forwardEvent(telnet_t *telnet, telnet_event_t *event,
                            void *user_data);
