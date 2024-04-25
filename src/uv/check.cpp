@@ -5,7 +5,7 @@ namespace whatmud::uv {
 
 Check::Check(uv_loop_t *loop) { uv_check_init(loop, &m_handle); }
 
-Check::~Check() {}
+Check::~Check() { stop(); }
 
 void Check::start(uv_check_cb cb) {
   int res = uv_check_start(&m_handle, cb);

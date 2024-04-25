@@ -11,7 +11,7 @@ namespace whatmud {
 
 class Engine {
 public:
-  Engine();
+  Engine(const char *game_dir);
   ~Engine();
 
   void run();
