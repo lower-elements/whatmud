@@ -34,7 +34,7 @@ protected:
 
 class TcpListener : public Listener, protected uv::TCP {
 public:
-  TcpListener(Engine *engine, const char *ip = "::", int port = 9009);
+  TcpListener(Engine *engine, const char *ip = "::", int port = 4000);
   virtual ~TcpListener() = default;
 
   virtual void listen() override;

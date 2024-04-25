@@ -49,7 +49,7 @@ void Engine::run() { m_loop.run(); }
 
 int l_listen(lua_State *L) {
   const char *ip = luaL_optstring(L, 1, "::");
-  int port = (int)luaL_optinteger(L, 2, 9009);
+  int port = (int)luaL_optinteger(L, 2, 4000);
 
   lua_pushvalue(L, lua_upvalueindex(1));
   Engine *engine = reinterpret_cast<Engine *>(lua_touserdata(L, -1));
