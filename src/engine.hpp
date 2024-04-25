@@ -1,8 +1,12 @@
 #ifndef WHATMUD_ENGINE_HPP
 #define WHATMUD_ENGINE_HPP
 
+#include <memory>
+#include <vector>
+
 #include <uv.h>
 
+#include "listener.hpp"
 #include "lua/state.hpp"
 #include "uv/loop.hpp"
 #include "uv/tcp.hpp"
@@ -14,12 +18,17 @@ public:
   Engine(const char *game_dir);
   ~Engine();
 
+  uv_loop_t *getLoop() { return m_loop.asLoop(); }
+  const uv_loop_t *getLoop() const { return m_loop.asLoop(); }
+
+  void listen(Listener *listener);
+
   void run();
 
 private:
   lua::State L;
   uv::Loop m_loop;
-  uv::TCP m_server_socket;
+  std::vector<std::unique_ptr<Listener>> m_listeners;
 };
 
 } // namespace whatmud

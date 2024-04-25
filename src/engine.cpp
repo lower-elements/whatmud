@@ -2,16 +2,24 @@
 
 #include "spdlog/spdlog.h"
 #include <fmt/core.h>
+#include <lua.hpp>
 
 #include "connection.hpp"
 #include "engine.hpp"
-#include "lua/error.hpp"
+#include "lua/helpers.hpp"
 #include "uv/error.hpp"
 
 namespace whatmud {
 
-Engine::Engine(const char *dir_name)
-    : L(), m_loop(), m_server_socket(m_loop.asLoop(), AF_INET) {
+// Forward declarations:
+int l_listen(lua_State *L);
+
+Engine::Engine(const char *dir_name) : L(), m_loop(), m_listeners(4) {
+  // // Register Lua configuration functions
+  lua_pushlightuserdata(L, this);
+  lua_pushcclosure(L, l_listen, 1);
+  lua_setglobal(L, "listen");
+
   // Load game code
   std::string init_script(fmt::format("{}/init.lua", dir_name));
   spdlog::info("Loading game init script from {}", init_script);
@@ -20,24 +28,28 @@ Engine::Engine(const char *dir_name)
     throw lua::Error(L, "Could not load game init script");
   }
   lua_call(L, 0, 0);
-
-  // Bind server socket
-  struct sockaddr_in addr;
-  res = uv_ip4_addr("0.0.0.0", 9009, &addr);
-  uv::check_error(res, "Could not create address for server socket");
-  m_server_socket.bind((const struct sockaddr *)&addr);
-
-  // Listen for new connections, and create Connection objects
-  m_server_socket.listen(32, [](uv_stream_t *server, int status) {
-    uv::check_error(status, "Could not listen for incoming connections");
-    spdlog::info("New connection!");
-    Connection *conn = new Connection(server->loop);
-    conn->accept(server);
-  });
 }
 
 Engine::~Engine() {}
 
+void Engine::listen(Listener *listener) {
+  m_listeners.emplace_back(listener);
+  listener->listen();
+  spdlog::info("Listening on {}:{}", listener->getListenIP(),
+               listener->getListenPort());
+}
+
 void Engine::run() { m_loop.run(); }
+
+int l_listen(lua_State *L) {
+  const char *ip = luaL_optstring(L, 1, "::");
+  int port = (int)luaL_optinteger(L, 2, 9009);
+
+  lua_pushvalue(L, lua_upvalueindex(1));
+  Engine *engine = reinterpret_cast<Engine *>(lua_touserdata(L, -1));
+  engine->listen(new TcpListener(engine, ip, port));
+
+  return 0;
+}
 
 } // namespace whatmud

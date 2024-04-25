@@ -89,6 +89,7 @@ endif()
 add_executable(whatmud
     src/connection.cpp
     src/engine.cpp
+    src/listener.cpp
     src/lua/error.cpp
     src/lua/stack.cpp
     src/lua/state.cpp
