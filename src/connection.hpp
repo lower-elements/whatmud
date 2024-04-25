@@ -2,12 +2,16 @@
 #define WHATMUD_CONNECTION_HPP
 
 #include <cstring>
+#include <sstream>
 #include <stddef.h>
+#include <string>
+#include <string_view>
 #include <utility>
 
 #include <fmt/core.h>
 #include <libtelnet.h>
 
+#include "uv/check.hpp"
 #include "uv/tcp.hpp"
 
 namespace whatmud {
@@ -32,10 +36,13 @@ public:
 protected:
   void onEvent(telnet_event_t &ev);
   void onEof();
-
-  void sendData(const char *buf, std::size_t size);
+  void onSend(const char *buf, std::size_t size);
+  void onRecv(const char *buf, std::size_t size);
+  void onMessage(const std::string &msg);
 
 private:
+  std::stringstream m_recv_buf;
+  uv::Check m_msg_proc;
   telnet_t *m_telnet;
 
   friend void onRead(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf);

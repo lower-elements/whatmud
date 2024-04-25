@@ -16,11 +16,14 @@ static void allocBuffer(uv_handle_t *handle, std::size_t suggested_size,
 static const telnet_telopt_t TELNET_OPTS[]{{-1, 0, 0}};
 
 Connection::Connection(uv_loop_t *loop)
-    : uv::TCP(loop), m_telnet(telnet_init(TELNET_OPTS, forwardEvent, 0, this)) {
+    : uv::TCP(loop), m_recv_buf(std::ios::in | std::ios::out), m_msg_proc(loop),
+      m_telnet(telnet_init(TELNET_OPTS, forwardEvent, 0, this)) {
   if (m_telnet == nullptr) {
     throw std::runtime_error("Could not create telnet state tracker");
   }
   setData(this);
+  m_recv_buf.exceptions(std::stringstream::badbit);
+  m_msg_proc.setData(this);
 }
 
 void Connection::accept(uv_stream_t *server_sock) {
@@ -38,7 +41,10 @@ Connection::~Connection() {
 void Connection::onEvent(telnet_event_t &ev) {
   switch (ev.type) {
   case TELNET_EV_SEND:
-    sendData(ev.data.buffer, ev.data.size);
+    onSend(ev.data.buffer, ev.data.size);
+    break;
+  case TELNET_EV_DATA:
+    onRecv(ev.data.buffer, ev.data.size);
     break;
   default:
     spdlog::debug("Ignoring telnet event with type {}", ev.type);
@@ -54,7 +60,7 @@ void Connection::onEof() {
   });
 }
 
-void Connection::sendData(const char *buf, std::size_t size) {
+void Connection::onSend(const char *buf, std::size_t size) {
   // Copy the data into a libuv buffer
   uv_buf_t writebuf;
   writebuf = uv_buf_init(new char[size], size);
@@ -70,6 +76,24 @@ void Connection::sendData(const char *buf, std::size_t size) {
     delete req;
     uv::check_error(status, "Write error");
   });
+}
+
+void Connection::onRecv(const char *buf, std::size_t size) {
+  m_recv_buf.write(buf, size);
+  m_msg_proc.start([](uv_check_t *handle) {
+    Connection *conn = reinterpret_cast<Connection *>(handle->data);
+    std::string msg;
+    while (!std::getline(conn->m_recv_buf, msg).eof()) {
+      conn->onMessage(msg);
+    }
+    conn->m_recv_buf.clear();
+    uv_check_stop(handle);
+  });
+}
+
+void Connection::onMessage(const std::string &msg) {
+  spdlog::info("Got message: {}", msg);
+  send(msg + '\n');
 }
 
 void forwardEvent(telnet_t *telnet, telnet_event_t *event, void *user_data) {
