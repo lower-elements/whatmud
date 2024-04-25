@@ -94,6 +94,7 @@ add_executable(whatmud
     src/lua/state.cpp
     src/lua/table_view.cpp
     src/main.cpp
+    src/uv/check.cpp
     src/uv/error.cpp
     src/uv/handle.cpp
     src/uv/loop.cpp

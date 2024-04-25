@@ -28,9 +28,6 @@ public:
   void send(const char *str) { send(str, std::strlen(str)); }
   void send(const std::string &str) { send(str.c_str(), str.size()); }
   void send(std::string_view str) { send(str.data(), str.size()); }
-  template <class... Args> void send(Args &&...args) {
-    send(fmt::format(std::forward(args...)));
-  }
 
 protected:
   void onEvent(telnet_event_t &ev);
