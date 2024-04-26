@@ -2,7 +2,7 @@
 
 #include "spdlog/spdlog.h"
 #include <fmt/core.h>
-#include <lua.hpp>
+#include <spdlog/cfg/helpers.h>
 
 #include "connection.hpp"
 #include "engine.hpp"
@@ -28,6 +28,19 @@ Engine::Engine(const char *dir_name) : L(), m_loop(), m_listeners() {
     throw lua::Error(L, "Could not load game init script");
   }
   lua_call(L, 0, 0);
+
+  // Set log level from Lua config
+  lua_getglobal(L, "log_level");
+  if (lua_isstring(L, -1)) {
+    std::string log_level;
+    lua::get(L, -1, log_level);
+    spdlog::cfg::helpers::load_levels(log_level);
+  } else if (!lua_isnil(L, -1)) {
+    spdlog::warn(
+        "Unknown type for global `log_level`: expected string or nil got {}",
+        luaL_typename(L, -1));
+  }
+  lua_pop(L, 1);
 
   // Warn the user if no listeners were created
   if (m_listeners.empty()) {

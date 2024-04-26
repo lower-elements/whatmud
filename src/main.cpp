@@ -19,7 +19,6 @@ namespace lua = whatmud::lua;
 int main(int argc, char **argv) {
   // Parse command-line arguments
   argv = uv_setup_args(argc, argv);
-  spdlog::cfg::load_argv_levels(argc, argv);
 
   const char *game_dir = nullptr;
   for (int i = 1; i < argc; ++i) {
@@ -38,6 +37,9 @@ int main(int argc, char **argv) {
   }
 
   whatmud::Engine engine(game_dir);
+  // This has to happen after engine construction to ensure command line params
+  // override the Lua config
+  spdlog::cfg::load_argv_levels(argc, argv);
   engine.run();
   return EXIT_SUCCESS;
 }
