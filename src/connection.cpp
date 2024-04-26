@@ -31,9 +31,10 @@ static const telnet_telopt_t TELNET_OPTS[]{
     {TELNET_TELOPT_CHARSET, TELNET_WILL, TELNET_DONT},
     {-1, 0, 0}};
 
-Connection::Connection(uv_loop_t *loop)
-    : uv::TCP(loop), m_recv_buf(std::ios::in | std::ios::out), m_msg_proc(loop),
-      m_telnet(telnet_init(TELNET_OPTS, forwardEvent, 0, this)), m_features() {
+Connection::Connection(Engine *engine)
+    : uv::TCP(engine->getLoop()), m_recv_buf(std::ios::in | std::ios::out),
+      m_msg_proc(engine->getLoop()), m_engine(engine),
+      m_telnet(telnet_init(TELNET_OPTS, forwardEvent, 0, this)) {
   if (m_telnet == nullptr) {
     throw std::runtime_error("Could not create telnet state tracker");
   }
@@ -119,9 +120,22 @@ void Connection::onEvent(telnet_event_t &ev) {
 void Connection::onEof() {
   m_log->info("Closing connection");
   close([](uv_handle_t *handle) {
-    // Destroy the Connection object
     Connection *conn = reinterpret_cast<Connection *>(handle->data);
-    delete conn;
+    // Set the connection object as disconnected
+    conn->m_connected = false;
+
+    // Remove it from the table of connections so it will be garbage collected
+    // when there are no more references
+    lua_State *L = conn->m_engine->getLuaState();
+    // Get connections table
+    lua_pushliteral(L, "connections");
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    // Set this Connection to nil
+    lua_pushlightuserdata(L, conn);
+    lua_pushnil(L);
+    lua_rawset(L, -3);
+    // Pop connections table
+    lua_pop(L, 1);
   });
 }
 

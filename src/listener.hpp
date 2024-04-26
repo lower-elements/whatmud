@@ -42,6 +42,8 @@ public:
   virtual ~TcpListener() = default;
 
   virtual void listen() override;
+
+  void onNewConnection();
 };
 
 } // namespace whatmud

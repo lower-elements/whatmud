@@ -6,6 +6,7 @@
 #include "connection.hpp"
 #include "engine.hpp"
 #include "listener.hpp"
+#include "lua/helpers.hpp"
 #include "uv/error.hpp"
 
 namespace whatmud {
@@ -13,7 +14,7 @@ namespace whatmud {
 Listener::Listener(Engine *engine, const char *ip, int port)
     : m_log(spdlog::stderr_color_st(fmt::format("listener@{}:{}", ip, port))),
       m_engine(engine) {
-  // Parse and bind address
+  // Parse address
   int res = uv_ip4_addr(ip, port, (struct sockaddr_in *)&m_listen_addr);
   if (res < 0) {
     // Try ipv6
@@ -70,12 +71,31 @@ void TcpListener::listen() {
                                   listener->getListenPort()));
     }
 
-    listener->m_log->info("New connection!");
-
-    Connection *conn = new Connection(handle->loop);
-    conn->accept(handle);
-    // Conn deletes itself, for now
+    listener->onNewConnection();
   });
+}
+
+void TcpListener::onNewConnection() {
+  m_log->info("New connection!");
+
+  // Get the Lua state
+  lua_State *L = m_engine->getLuaState();
+
+  // Get the connections table
+  lua_pushliteral(L, "connections");
+  lua_rawget(L, LUA_REGISTRYINDEX);
+
+  // Create a new Connection object
+  Connection *conn = lua::new_userdata<Connection>(L, m_engine);
+  conn->accept(asStream());
+
+  // Add it to the connections table to keep it alive
+  lua_pushlightuserdata(L, conn);
+  lua_insert(L, -2); // Swap the key and value
+  lua_rawset(L, -3);
+
+  // Pop connections table
+  lua_pop(L, 1);
 }
 
 } // namespace whatmud

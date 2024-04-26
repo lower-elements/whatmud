@@ -12,6 +12,7 @@
 #include <libtelnet.h>
 #include <spdlog/spdlog.h>
 
+#include "engine.hpp"
 #include "features.hpp"
 #include "uv/check.hpp"
 #include "uv/tcp.hpp"
@@ -20,7 +21,7 @@ namespace whatmud {
 
 class Connection : protected uv::TCP {
 public:
-  Connection(uv_loop_t *loop);
+  Connection(Engine *engine);
   ~Connection();
 
   void accept(uv_stream_t *server_sock);
@@ -70,9 +71,14 @@ private:
   // We do this in a check handler instead of when data is received for more
   // fair distribution of CPU time per client
   uv::Check m_msg_proc;
+  // Pointer back to the Engine
+  Engine *m_engine;
   // Libtelnet state tracker
   telnet_t *m_telnet;
-  Features m_features;
+  // Features supported by this client
+  Features m_features{};
+  // Whether this client is still connected
+  bool m_connected : 1 = true;
 
   static std::shared_ptr<spdlog::logger> m_log;
 

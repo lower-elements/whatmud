@@ -31,7 +31,11 @@ void Engine::registerLuaBuiltins() {
   auto extraspace = reinterpret_cast<Engine **>(lua_getextraspace(L.get()));
   *extraspace = this;
 
-  // // Register Lua configuration functions
+  // Create the connections table
+  lua_newtable(L);
+  lua_setfield(L, LUA_REGISTRYINDEX, "connections");
+
+  // Register Lua configuration functions
   lua_pushcfunction(L, l_listen);
   lua_setglobal(L, "listen");
 }

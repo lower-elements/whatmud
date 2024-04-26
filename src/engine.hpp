@@ -22,6 +22,8 @@ public:
   uv_loop_t *getLoop() { return m_loop.asLoop(); }
   const uv_loop_t *getLoop() const { return m_loop.asLoop(); }
 
+  lua_State *getLuaState() { return L; }
+
   void listen(std::unique_ptr<Listener> &&listener);
 
   void run();
