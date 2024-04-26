@@ -17,7 +17,7 @@ namespace whatmud {
 class Engine {
 public:
   Engine(const char *game_dir);
-  ~Engine();
+  ~Engine() = default;
 
   uv_loop_t *getLoop() { return m_loop.asLoop(); }
   const uv_loop_t *getLoop() const { return m_loop.asLoop(); }

@@ -55,8 +55,6 @@ void Engine::setLogLevel() {
   lua_pop(L, 1);
 }
 
-Engine::~Engine() {}
-
 void Engine::listen(std::unique_ptr<Listener> &&listener) {
   listener->listen();
   m_listeners.emplace_back(std::move(listener));
