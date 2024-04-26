@@ -27,8 +27,14 @@ public:
   void run();
 
 private:
+  void registerLuaBuiltins();
+  void loadGameCode();
+  void setLogLevel();
+
+private:
   std::shared_ptr<spdlog::logger> m_log;
   uv::Loop m_loop;
+  std::string m_game_dir;
   std::vector<std::unique_ptr<Listener>> m_listeners;
   lua::State L;
 };
