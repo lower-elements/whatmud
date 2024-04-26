@@ -5,6 +5,14 @@
 #include "connection.hpp"
 #include "uv/error.hpp"
 
+// Telnet charset negotiation, not yet in libtelnet
+#ifndef TELNET_TELOPT_CHARSET
+#define TELNET_TELOPT_CHARSET 42
+#define TELNET_CHARSET_REQUEST 1
+#define TELNET_CHARSET_ACCEPTED 2
+#define TELNET_CHARSET_REJECTED 3
+#endif
+
 namespace whatmud {
 
 // Forward declarations:
@@ -18,20 +26,20 @@ std::shared_ptr<spdlog::logger> Connection::m_log =
     spdlog::stderr_color_mt("connection");
 
 // Telnet options we support, terminated by -1
-// Currently we haven't implemented any
 static const telnet_telopt_t TELNET_OPTS[]{
-    {TELNET_TELOPT_BINARY, TELNET_WILL, TELNET_DO},
     {TELNET_TELOPT_SGA, TELNET_WILL, TELNET_DO},
+    {TELNET_TELOPT_CHARSET, TELNET_WILL, TELNET_DONT},
     {-1, 0, 0}};
 
 Connection::Connection(uv_loop_t *loop)
     : uv::TCP(loop), m_recv_buf(std::ios::in | std::ios::out), m_msg_proc(loop),
-      m_telnet(telnet_init(TELNET_OPTS, forwardEvent, 0, this)) {
+      m_telnet(telnet_init(TELNET_OPTS, forwardEvent, 0, this)),
+      m_supports_utf8(true) {
   if (m_telnet == nullptr) {
     throw std::runtime_error("Could not create telnet state tracker");
   }
 
-  // Makes it easy for event callbacks to reference this COnnection object
+  // Makes it easy for event callbacks to reference this Connection object
   setData(this);
 
   // Tell the receive buffer to throw exceptions for hard IO errors, but not EOF
@@ -46,6 +54,16 @@ void Connection::accept(uv_stream_t *server_sock) {
   int res = uv_accept(server_sock, asStream());
   uv::check_error(res, "Could not accept client connection");
   readStart(allocBuffer, onRead);
+
+  // Initial negotiation
+  for (const telnet_telopt_t *opt = TELNET_OPTS; opt->telopt != -1; ++opt) {
+    if (opt->us == TELNET_WILL) {
+      telnet_negotiate(m_telnet, TELNET_WILL, opt->telopt);
+    }
+    if (opt->him == TELNET_DO) {
+      telnet_negotiate(m_telnet, TELNET_DO, opt->telopt);
+    }
+  }
 }
 
 Connection::~Connection() {
@@ -64,6 +82,7 @@ void Connection::onEvent(telnet_event_t &ev) {
     // Buffer data from client
     onRecv(ev.data.buffer, ev.data.size);
     break;
+
   case TELNET_EV_WARNING:
     m_log->warn("{}:{} - {} - {}", ev.error.file, ev.error.line, ev.error.func,
                 ev.error.msg);
@@ -73,18 +92,25 @@ void Connection::onEvent(telnet_event_t &ev) {
                  ev.error.msg);
     onEof();
     break;
+
   case TELNET_EV_WILL:
-    m_log->debug("Client will use option {}", ev.neg.telopt);
-    break;
-  case TELNET_EV_DO:
-    m_log->debug("Client wants option {}", ev.neg.telopt);
+    onClientWill(ev.neg.telopt);
     break;
   case TELNET_EV_WONT:
-    m_log->debug("Client won't use option {}", ev.neg.telopt);
+    onClientWont(ev.neg.telopt);
+    break;
+  case TELNET_EV_DO:
+    onClientDo(ev.neg.telopt);
     break;
   case TELNET_EV_DONT:
-    m_log->debug("Client doesn't want option {}", ev.neg.telopt);
+    onClientDont(ev.neg.telopt);
     break;
+
+  case TELNET_EV_SUBNEGOTIATION:
+    onClientSubNegotiate(ev.sub.telopt,
+                         std::string_view(ev.sub.buffer, ev.sub.size));
+    break;
+
   default: // Unknown event
     m_log->debug("Ignoring telnet event with type {}", ev.type);
     break;
@@ -141,6 +167,46 @@ void Connection::onRecv(const char *buf, std::size_t size) {
 void Connection::onMessage(const std::string &msg) {
   m_log->info("Got message: {}", msg);
   send(msg + '\n'); // Echo the message
+}
+
+void Connection::onClientWill(unsigned char telopt) {
+  m_log->debug("Client will use telnet option {}", telopt);
+}
+
+void Connection::onClientWont(unsigned char telopt) {
+  m_log->debug("Client won't use telnet option {}", telopt);
+}
+
+void Connection::onClientDo(unsigned char telopt) {
+  m_log->debug("Client wants telnet option {}", telopt);
+  switch (telopt) {
+  case TELNET_TELOPT_CHARSET:
+    // Request to use UTF-8
+    telnet_begin_sb(m_telnet, TELNET_TELOPT_CHARSET);
+    telnet_printf(m_telnet, "%c UTF-8", TELNET_CHARSET_REQUEST);
+    telnet_finish_sb(m_telnet);
+    break;
+  }
+}
+
+void Connection::onClientDont(unsigned char telopt) {
+  m_log->debug("Client doesn't want telnet option {}", telopt);
+}
+
+void Connection::onClientSubNegotiate(unsigned char telopt,
+                                      std::string_view data) {
+  if (telopt != TELNET_TELOPT_CHARSET) {
+    return; // Ignore unknown SB
+  }
+  char status = data.at(0);
+  if (status == TELNET_CHARSET_ACCEPTED) {
+    m_supports_utf8 = true;
+  } else if (status == TELNET_CHARSET_REJECTED) {
+    m_log->info("Client doesn't accept UTF-8, falling back to ASCII");
+    m_supports_utf8 = false;
+  } else {
+    m_log->warn("Unknown charset negotiation data: {}", data);
+  }
 }
 
 void forwardEvent(telnet_t *telnet, telnet_event_t *event, void *user_data) {

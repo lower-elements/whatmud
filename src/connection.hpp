@@ -50,6 +50,18 @@ protected: // Event handlers
   // Called for each message line
   void onMessage(const std::string &msg);
 
+  // Called when the client requests to turn on a feature
+  void onClientWill(unsigned char telopt);
+  // Called when the client notifies us of a feature being turned off
+  void onClientWont(unsigned char telopt);
+  // Called when the client requests us to turn on a feature
+  void onClientDo(unsigned char telopt);
+  // Called when the client tells us to turn off a feature
+  void onClientDont(unsigned char telopt);
+
+  // Called when the client sends subnegotiation data
+  void onClientSubNegotiate(unsigned char telopt, std::string_view data);
+
 private:
   // Receive buffer, used to buffer message lines
   std::stringstream m_recv_buf;
@@ -59,6 +71,7 @@ private:
   uv::Check m_msg_proc;
   // Libtelnet state tracker
   telnet_t *m_telnet;
+  bool m_supports_utf8;
 
   static std::shared_ptr<spdlog::logger> m_log;
 
