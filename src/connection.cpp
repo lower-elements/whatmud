@@ -33,8 +33,7 @@ static const telnet_telopt_t TELNET_OPTS[]{
 
 Connection::Connection(uv_loop_t *loop)
     : uv::TCP(loop), m_recv_buf(std::ios::in | std::ios::out), m_msg_proc(loop),
-      m_telnet(telnet_init(TELNET_OPTS, forwardEvent, 0, this)),
-      m_supports_utf8(true) {
+      m_telnet(telnet_init(TELNET_OPTS, forwardEvent, 0, this)), m_features() {
   if (m_telnet == nullptr) {
     throw std::runtime_error("Could not create telnet state tracker");
   }
@@ -200,10 +199,10 @@ void Connection::onClientSubNegotiate(unsigned char telopt,
   }
   char status = data.at(0);
   if (status == TELNET_CHARSET_ACCEPTED) {
-    m_supports_utf8 = true;
+    m_features.utf8 = true;
   } else if (status == TELNET_CHARSET_REJECTED) {
     m_log->info("Client doesn't accept UTF-8, falling back to ASCII");
-    m_supports_utf8 = false;
+    m_features.utf8 = false;
   } else {
     m_log->warn("Unknown charset negotiation data: {}", data);
   }

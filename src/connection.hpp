@@ -12,6 +12,7 @@
 #include <libtelnet.h>
 #include <spdlog/spdlog.h>
 
+#include "features.hpp"
 #include "uv/check.hpp"
 #include "uv/tcp.hpp"
 
@@ -71,7 +72,7 @@ private:
   uv::Check m_msg_proc;
   // Libtelnet state tracker
   telnet_t *m_telnet;
-  bool m_supports_utf8;
+  Features m_features;
 
   static std::shared_ptr<spdlog::logger> m_log;
 
