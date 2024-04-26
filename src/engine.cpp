@@ -12,6 +12,9 @@
 
 namespace whatmud {
 
+static_assert(LUA_EXTRASPACE >= sizeof(void *),
+              "Lua must be compiled with LUA_EXTRASPACE = sizeof(void*)");
+
 // Forward declarations:
 int l_listen(lua_State *L);
 
@@ -24,9 +27,12 @@ Engine::Engine(const char *game_dir)
 }
 
 void Engine::registerLuaBuiltins() {
+  // Put a pointer to the engine in the main thread's extra space
+  auto extraspace = reinterpret_cast<Engine **>(lua_getextraspace(L.get()));
+  *extraspace = this;
+
   // // Register Lua configuration functions
-  lua_pushlightuserdata(L, this);
-  lua_pushcclosure(L, l_listen, 1);
+  lua_pushcfunction(L, l_listen);
   lua_setglobal(L, "listen");
 }
 
@@ -75,8 +81,7 @@ int l_listen(lua_State *L) {
   const char *ip = luaL_optstring(L, 1, "::");
   int port = (int)luaL_optinteger(L, 2, 4000);
 
-  lua_pushvalue(L, lua_upvalueindex(1));
-  Engine *engine = reinterpret_cast<Engine *>(lua_touserdata(L, -1));
+  Engine *engine = *reinterpret_cast<Engine **>(lua_getextraspace(L));
   engine->listen(std::make_unique<TcpListener>(engine, ip, port));
 
   return 0;
