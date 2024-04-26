@@ -22,7 +22,7 @@ public:
   uv_loop_t *getLoop() { return m_loop.asLoop(); }
   const uv_loop_t *getLoop() const { return m_loop.asLoop(); }
 
-  void listen(Listener *listener);
+  void listen(std::unique_ptr<Listener> &&listener);
 
   void run();
 

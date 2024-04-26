@@ -53,8 +53,8 @@ Engine::Engine(const char *dir_name)
 
 Engine::~Engine() {}
 
-void Engine::listen(Listener *listener) {
-  m_listeners.emplace_back(listener);
+void Engine::listen(std::unique_ptr<Listener> &&listener) {
+  m_listeners.emplace_back(std::move(listener));
   listener->listen();
 }
 
@@ -66,7 +66,7 @@ int l_listen(lua_State *L) {
 
   lua_pushvalue(L, lua_upvalueindex(1));
   Engine *engine = reinterpret_cast<Engine *>(lua_touserdata(L, -1));
-  engine->listen(new TcpListener(engine, ip, port));
+  engine->listen(std::make_unique<TcpListener>(engine, ip, port));
 
   return 0;
 }
