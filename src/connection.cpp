@@ -19,7 +19,8 @@ std::shared_ptr<spdlog::logger> Connection::m_log =
 
 // Telnet options we support, terminated by -1
 // Currently we haven't implemented any
-static const telnet_telopt_t TELNET_OPTS[]{{-1, 0, 0}};
+static const telnet_telopt_t TELNET_OPTS[]{
+    {TELNET_TELOPT_BINARY, TELNET_WILL, TELNET_DO}, {-1, 0, 0}};
 
 Connection::Connection(uv_loop_t *loop)
     : uv::TCP(loop), m_recv_buf(std::ios::in | std::ios::out), m_msg_proc(loop),
@@ -69,6 +70,18 @@ void Connection::onEvent(telnet_event_t &ev) {
     m_log->error("{}:{} - {} - {}", ev.error.file, ev.error.line, ev.error.func,
                  ev.error.msg);
     onEof();
+    break;
+  case TELNET_EV_WILL:
+    m_log->debug("Client will use option {}", ev.neg.telopt);
+    break;
+  case TELNET_EV_DO:
+    m_log->debug("Client wants option {}", ev.neg.telopt);
+    break;
+  case TELNET_EV_WONT:
+    m_log->debug("Client won't use option {}", ev.neg.telopt);
+    break;
+  case TELNET_EV_DONT:
+    m_log->debug("Client doesn't want option {}", ev.neg.telopt);
     break;
   default: // Unknown event
     m_log->debug("Ignoring telnet event with type {}", ev.type);
