@@ -3,6 +3,7 @@
 #include "spdlog/spdlog.h"
 #include <fmt/core.h>
 #include <spdlog/cfg/helpers.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 #include "connection.hpp"
 #include "engine.hpp"
@@ -14,7 +15,8 @@ namespace whatmud {
 // Forward declarations:
 int l_listen(lua_State *L);
 
-Engine::Engine(const char *dir_name) : L(), m_loop(), m_listeners() {
+Engine::Engine(const char *dir_name)
+    : m_log(spdlog::stderr_color_st("engine")), m_loop(), m_listeners(), L() {
   // // Register Lua configuration functions
   lua_pushlightuserdata(L, this);
   lua_pushcclosure(L, l_listen, 1);
@@ -22,7 +24,7 @@ Engine::Engine(const char *dir_name) : L(), m_loop(), m_listeners() {
 
   // Load game code
   std::string init_script(fmt::format("{}/init.lua", dir_name));
-  spdlog::info("Loading game init script from {}", init_script);
+  m_log->info("Loading game init script from {}", init_script);
   int res = luaL_loadfilex(L, init_script.c_str(), "t");
   if (res != LUA_OK) {
     throw lua::Error(L, "Could not load game init script");
@@ -36,7 +38,7 @@ Engine::Engine(const char *dir_name) : L(), m_loop(), m_listeners() {
     lua::get(L, -1, log_level);
     spdlog::cfg::helpers::load_levels(log_level);
   } else if (!lua_isnil(L, -1)) {
-    spdlog::warn(
+    m_log->warn(
         "Unknown type for global `log_level`: expected string or nil got {}",
         luaL_typename(L, -1));
   }
@@ -44,8 +46,8 @@ Engine::Engine(const char *dir_name) : L(), m_loop(), m_listeners() {
 
   // Warn the user if no listeners were created
   if (m_listeners.empty()) {
-    spdlog::warn("No listeners created, did you forget to call listen() in {}?",
-                 init_script);
+    m_log->warn("No listeners created, did you forget to call listen() in {}?",
+                init_script);
   }
 }
 
@@ -54,8 +56,8 @@ Engine::~Engine() {}
 void Engine::listen(Listener *listener) {
   m_listeners.emplace_back(listener);
   listener->listen();
-  spdlog::info("Listening on {}:{}", listener->getListenIP(),
-               listener->getListenPort());
+  m_log->info("Listening on {}:{}", listener->getListenIP(),
+              listener->getListenPort());
 }
 
 void Engine::run() { m_loop.run(); }

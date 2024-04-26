@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 
+#include <spdlog/spdlog.h>
 #include <uv.h>
 
 #include "listener.hpp"
@@ -26,9 +27,10 @@ public:
   void run();
 
 private:
-  lua::State L;
+  std::shared_ptr<spdlog::logger> m_log;
   uv::Loop m_loop;
   std::vector<std::unique_ptr<Listener>> m_listeners;
+  lua::State L;
 };
 
 } // namespace whatmud

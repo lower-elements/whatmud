@@ -10,6 +10,7 @@
 
 #include <fmt/core.h>
 #include <libtelnet.h>
+#include <spdlog/spdlog.h>
 
 #include "uv/check.hpp"
 #include "uv/tcp.hpp"
@@ -58,6 +59,8 @@ private:
   uv::Check m_msg_proc;
   // Libtelnet state tracker
   telnet_t *m_telnet;
+
+  static std::shared_ptr<spdlog::logger> m_log;
 
   // Friend functions used to call event handler member methods
   friend void onRead(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf);

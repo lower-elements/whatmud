@@ -1,7 +1,10 @@
 #ifndef WHATMUD_LISTENER_HPP
 #define WHATMUD_LISTENER_HPP
 
+#include <memory>
 #include <string>
+
+#include <spdlog/spdlog.h>
 
 #include "uv/tcp.hpp"
 
@@ -28,8 +31,9 @@ public:
   int getListenPort() const;
 
 protected:
-  Engine *m_engine;
+  std::shared_ptr<spdlog::logger> m_log;
   struct sockaddr_storage m_listen_addr;
+  Engine *m_engine;
 };
 
 class TcpListener : public Listener, protected uv::TCP {

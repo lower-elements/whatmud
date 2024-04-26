@@ -1,6 +1,6 @@
 #include <stdexcept>
 
-#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 #include "connection.hpp"
 #include "uv/error.hpp"
@@ -12,6 +12,10 @@ void forwardEvent(telnet_t *telnet, telnet_event_t *event, void *user_data);
 void onRead(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf);
 static void allocBuffer(uv_handle_t *handle, std::size_t suggested_size,
                         uv_buf_t *buf);
+
+// Logger for all connection objects
+std::shared_ptr<spdlog::logger> Connection::m_log =
+    spdlog::stderr_color_mt("connection");
 
 // Telnet options we support, terminated by -1
 // Currently we haven't implemented any
@@ -58,13 +62,13 @@ void Connection::onEvent(telnet_event_t &ev) {
     onRecv(ev.data.buffer, ev.data.size);
     break;
   default: // Unknown event
-    spdlog::debug("Ignoring telnet event with type {}", ev.type);
+    m_log->debug("Ignoring telnet event with type {}", ev.type);
     break;
   }
 }
 
 void Connection::onEof() {
-  spdlog::info("Connection got EOF, closing");
+  m_log->info("Connection got EOF, closing");
   close([](uv_handle_t *handle) {
     // Destroy the Connection object
     Connection *conn = reinterpret_cast<Connection *>(handle->data);
@@ -111,7 +115,7 @@ void Connection::onRecv(const char *buf, std::size_t size) {
 }
 
 void Connection::onMessage(const std::string &msg) {
-  spdlog::info("Got message: {}", msg);
+  m_log->info("Got message: {}", msg);
   send(msg + '\n'); // Echo the message
 }
 

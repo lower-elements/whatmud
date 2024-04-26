@@ -1,7 +1,7 @@
 #include <stdexcept>
 
 #include <fmt/core.h>
-#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 #include "connection.hpp"
 #include "engine.hpp"
@@ -11,7 +11,8 @@
 namespace whatmud {
 
 Listener::Listener(Engine *engine, const char *ip, int port)
-    : m_engine(engine) {
+    : m_log(spdlog::stderr_color_st(fmt::format("listener@{}:{}", ip, port))),
+      m_engine(engine) {
   // Parse and bind address
   int res = uv_ip4_addr(ip, port, (struct sockaddr_in *)&m_listen_addr);
   if (res < 0) {
@@ -67,7 +68,7 @@ void TcpListener::listen() {
                                   listener->getListenPort()));
     }
 
-    spdlog::info("New connection!");
+    listener->m_log->info("New connection!");
 
     Connection *conn = new Connection(handle->loop);
     conn->accept(handle);
