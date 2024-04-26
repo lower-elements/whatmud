@@ -56,8 +56,6 @@ Engine::~Engine() {}
 void Engine::listen(Listener *listener) {
   m_listeners.emplace_back(listener);
   listener->listen();
-  m_log->info("Listening on {}:{}", listener->getListenIP(),
-              listener->getListenPort());
 }
 
 void Engine::run() { m_loop.run(); }

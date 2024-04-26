@@ -57,6 +57,8 @@ TcpListener::TcpListener(Engine *engine, const char *ip, int port)
 }
 
 void TcpListener::listen() {
+  m_log->info("Listening on {}:{}", getListenIP(), getListenPort());
+
   TCP::listen(32, [](uv_stream_t *handle, int status) {
     TcpListener *listener = reinterpret_cast<TcpListener *>(handle->data);
 
