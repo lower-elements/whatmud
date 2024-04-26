@@ -21,13 +21,6 @@ Engine::Engine(const char *game_dir)
   registerLuaBuiltins();
   loadGameCode();
   setLogLevel();
-
-  // Warn the user if no listeners were created
-  if (m_listeners.empty()) {
-    m_log->warn(
-        "No listeners created, did you forget to call listen() in {}/init.lua?",
-        m_game_dir);
-  }
 }
 
 void Engine::registerLuaBuiltins() {
@@ -69,7 +62,16 @@ void Engine::listen(std::unique_ptr<Listener> &&listener) {
   m_listeners.emplace_back(std::move(listener));
 }
 
-void Engine::run() { m_loop.run(); }
+void Engine::run() {
+  // Warn the user if no listeners were created
+  if (m_listeners.empty()) {
+    m_log->warn(
+        "No listeners created, did you forget to call listen() in {}/init.lua?",
+        m_game_dir);
+  }
+
+  m_loop.run();
+}
 
 int l_listen(lua_State *L) {
   const char *ip = luaL_optstring(L, 1, "::");
