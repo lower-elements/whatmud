@@ -27,9 +27,7 @@ std::shared_ptr<spdlog::logger> Connection::m_log =
 
 // Telnet options we support, terminated by -1
 static const telnet_telopt_t TELNET_OPTS[]{
-    {TELNET_TELOPT_SGA, TELNET_WILL, TELNET_DO},
-    {TELNET_TELOPT_CHARSET, TELNET_WILL, TELNET_DONT},
-    {-1, 0, 0}};
+    {TELNET_TELOPT_CHARSET, TELNET_WILL, TELNET_DONT}, {-1, 0, 0}};
 
 Connection::Connection(Engine *engine)
     : uv::TCP(engine->getLoop()), m_recv_buf(std::ios::in | std::ios::out),
