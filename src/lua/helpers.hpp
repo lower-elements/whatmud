@@ -8,5 +8,6 @@
 #include "lua/stack.hpp"
 #include "lua/state.hpp"
 #include "lua/table_view.hpp"
+#include "lua/types.hpp"
 
 #endif
