@@ -20,7 +20,9 @@ std::shared_ptr<spdlog::logger> Connection::m_log =
 // Telnet options we support, terminated by -1
 // Currently we haven't implemented any
 static const telnet_telopt_t TELNET_OPTS[]{
-    {TELNET_TELOPT_BINARY, TELNET_WILL, TELNET_DO}, {-1, 0, 0}};
+    {TELNET_TELOPT_BINARY, TELNET_WILL, TELNET_DO},
+    {TELNET_TELOPT_SGA, TELNET_WILL, TELNET_DO},
+    {-1, 0, 0}};
 
 Connection::Connection(uv_loop_t *loop)
     : uv::TCP(loop), m_recv_buf(std::ios::in | std::ios::out), m_msg_proc(loop),
