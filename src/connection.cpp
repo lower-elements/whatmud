@@ -61,6 +61,15 @@ void Connection::onEvent(telnet_event_t &ev) {
     // Buffer data from client
     onRecv(ev.data.buffer, ev.data.size);
     break;
+  case TELNET_EV_WARNING:
+    m_log->warn("{}:{} - {} - {}", ev.error.file, ev.error.line, ev.error.func,
+                ev.error.msg);
+    break;
+  case TELNET_EV_ERROR:
+    m_log->error("{}:{} - {} - {}", ev.error.file, ev.error.line, ev.error.func,
+                 ev.error.msg);
+    onEof();
+    break;
   default: // Unknown event
     m_log->debug("Ignoring telnet event with type {}", ev.type);
     break;
@@ -68,7 +77,7 @@ void Connection::onEvent(telnet_event_t &ev) {
 }
 
 void Connection::onEof() {
-  m_log->info("Connection got EOF, closing");
+  m_log->info("Closing connection");
   close([](uv_handle_t *handle) {
     // Destroy the Connection object
     Connection *conn = reinterpret_cast<Connection *>(handle->data);
