@@ -1,3 +1,4 @@
+#include <cassert>
 #include <stdexcept>
 
 #include <fmt/core.h>
@@ -86,10 +87,26 @@ void TcpListener::onNewConnection() {
   lua_rawget(L, LUA_REGISTRYINDEX);
 
   // Create a new Connection object
-  Connection *conn = lua::new_userdata<Connection>(L, m_engine);
+  Connection *conn = lua::new_userdata_uv<Connection>(L, 1, m_engine);
   conn->accept(asStream());
 
-  // Add it to the connections table to keep it alive
+  // Create the coroutine on which the client handler runs
+  lua_State *co = lua_newthread(L);
+
+  // Set the coroutine as the Connection's first uservalue
+  lua_pushvalue(L, -1);
+  lua_setiuservalue(L, -3, 1);
+
+  // Run the client handler on the coroutine
+  lua_pushliteral(co, "client_handler");
+  lua_rawget(co, LUA_REGISTRYINDEX);
+  assert(lua_isfunction(co, 1));
+  int nresults;
+  lua_resume(co, L, 0, &nresults);
+
+  lua_pop(L, 1); // Pop coroutine
+
+  // Add the Connection to the connections table to keep it alive
   lua_pushlightuserdata(L, conn);
   lua_insert(L, -2); // Swap the key and value
   lua_rawset(L, -3);
