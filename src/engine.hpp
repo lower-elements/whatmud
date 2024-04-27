@@ -29,9 +29,14 @@ public:
   void run();
 
 private:
+  // Initialisation functions
   void registerLuaBuiltins();
   void loadGameCode();
   void setLogLevel();
+  void loadClientHandler();
+
+  // Find and load a Lua script in the game directory
+  void requireFrom(std::string_view name);
 
 private:
   std::shared_ptr<spdlog::logger> m_log;

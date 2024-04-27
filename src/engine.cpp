@@ -24,6 +24,7 @@ Engine::Engine(const char *game_dir)
   registerLuaBuiltins();
   loadGameCode();
   setLogLevel();
+  loadClientHandler();
 }
 
 void Engine::registerLuaBuiltins() {
@@ -63,6 +64,56 @@ void Engine::setLogLevel() {
         luaL_typename(L, -1));
   }
   lua_pop(L, 1);
+}
+
+void Engine::loadClientHandler() {
+  // Get name of client handler script to run
+  lua_getglobal(L, "client_handler");
+  if (!lua_isstring(L, -1)) {
+    throw std::runtime_error(fmt::format(
+        "Expected global 'client_handler' to be nil or string, got {}",
+        luaL_typename(L, -1)));
+  }
+  std::string_view name;
+  lua::get(L, -1, name);
+
+  // Load the chunk
+  requireFrom(name);
+
+  // Store in registry
+  lua_setfield(L, LUA_REGISTRYINDEX, "client_handler");
+  lua_pop(L, 1);
+}
+
+void Engine::requireFrom(std::string_view name) {
+  // Get the package.searchpath function
+  lua_getglobal(L, "package");
+  lua_getfield(L, -1, "searchpath");
+  lua_replace(L, -2);
+
+  // Push name of script
+  lua::push(L, name);
+
+  // Push path to search
+  std::string path(fmt::format("{0}/?.lua;{0}/?/init.lua", m_game_dir));
+  lua::push(L, path);
+
+  lua_call(L, 2, 2);
+  // Check if the file was found
+  if (lua_isnil(L, -2)) {
+    lua_replace(L, -2);
+    throw lua::Error(L, fmt::format("No module {}", name));
+  }
+  lua_pop(L, 1);
+  // Search was successful, get script path
+  const char *script_path;
+  lua::get(L, -1, script_path);
+  // Load chunk
+  int res = luaL_loadfilex(L, script_path, "t");
+  lua_replace(L, -2);
+  if (res != LUA_OK) {
+    throw lua::Error(L, "Could not load chunk");
+  }
 }
 
 void Engine::listen(std::unique_ptr<Listener> &&listener) {
