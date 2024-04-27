@@ -54,16 +54,26 @@ template <class T> void make_metatable(lua_State *L) {
   // implement operator+(), etc)
 }
 
-template <class T, class... Args>
-T *new_userdata(lua_State *L, Args &&...args) {
-  std::size_t alloc_size = sizeof(T);
+template <class T> std::size_t alloc_size() {
+  std::size_t size = sizeof(T);
   if constexpr (alignof(T) > MIN_USERDATA_ALIGNMENT) {
-    alloc_size += MIN_USERDATA_ALIGNMENT;
+    size += MIN_USERDATA_ALIGNMENT;
   }
-  void *ptr = lua_newuserdata(L, alloc_size);
+  return size;
+}
+
+template <class T> void *alloc_userdata(lua_State *L, int uservalues = 0) {
+  auto size = alloc_size<T>();
+  void *ptr = lua_newuserdatauv(L, size, uservalues);
   if constexpr (alignof(T) > MIN_USERDATA_ALIGNMENT) {
     ptr = align_up(ptr, alignof(T));
   }
+  return ptr;
+}
+
+template <class T, class... Args>
+T *new_userdata_uv(lua_State *L, int uservalues, Args &&...args) {
+  void *ptr = alloc_userdata<T>(L, uservalues);
 
   // Get and / or create metatable
   make_metatable<T>(L);
@@ -73,32 +83,36 @@ T *new_userdata(lua_State *L, Args &&...args) {
 }
 
 template <class T, class... Args>
-T *new_userdata_mt(lua_State *L, const char *metatable, Args &&...args) {
-  std::size_t alloc_size = sizeof(T);
-  if constexpr (alignof(T) > MIN_USERDATA_ALIGNMENT) {
-    alloc_size += MIN_USERDATA_ALIGNMENT;
-  }
-  void *ptr = lua_newuserdata(L, alloc_size);
-  if constexpr (alignof(T) > MIN_USERDATA_ALIGNMENT) {
-    ptr = align_up(ptr, alignof(T));
-  }
+T *new_userdata(lua_State *L, Args &&...args) {
+  return new_userdata_uv<T, Args...>(L, 0, std::forward<Args>(args)...);
+}
+
+template <class T, class... Args>
+T *new_userdata_mt_uv(lua_State *L, int uservalues, const char *metatable,
+                      Args &&...args) {
+  void *ptr = alloc_userdata<T>(L, uservalues);
   luaL_setmetatable(L, metatable);
   return new (ptr) T(std::forward<Args>(args)...);
 }
 
 template <class T, class... Args>
-T *new_userdata_mt(lua_State *L, int metatable_index, Args &&...args) {
-  std::size_t alloc_size = sizeof(T);
-  if constexpr (alignof(T) > MIN_USERDATA_ALIGNMENT) {
-    alloc_size += MIN_USERDATA_ALIGNMENT;
-  }
-  void *ptr = lua_newuserdata(L, alloc_size);
-  if constexpr (alignof(T) > MIN_USERDATA_ALIGNMENT) {
-    ptr = align_up(ptr, alignof(T));
-  }
+T *new_userdata_mt(lua_State *L, const char *metatable, Args &&...args) {
+  return new_userdata_mt<T, Args...>(L, metatable, std::forward<Args>(args)...);
+}
+
+template <class T, class... Args>
+T *new_userdata_mt_uv(lua_State *L, int uservalues, int metatable_index,
+                      Args &&...args) {
+  void *ptr = alloc_userdata<T>(L, uservalues);
   lua_pushvalue(L, metatable_index);
   lua_setmetatable(L, -2);
   return new (ptr) T(std::forward<Args>(args)...);
+}
+
+template <class T, class... Args>
+T *new_userdata_mt(lua_State *L, int metatable_index, Args &&...args) {
+  return new_userdata_mt<T, Args...>(L, 0, metatable_index,
+                                     std::forward<Args>(args)...);
 }
 
 static inline TableView new_table(lua_State *L, int narr = 0, int nrec = 0) {
