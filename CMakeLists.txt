@@ -105,4 +105,7 @@ add_executable(whatmud
     )
 target_include_directories(whatmud PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(whatmud PRIVATE fmt telnet lua_lib spdlog::spdlog SQLite3 uv)
+if(WIN32)
+    target_link_libraries(whatmud PRIVATE wsock32 ws2_32)
+endif()
 install(TARGETS whatmud DESTINATION bin)
