@@ -3,6 +3,7 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 #include "connection.hpp"
+#include "lua/helpers.hpp"
 #include "uv/error.hpp"
 
 // Telnet charset negotiation, not yet in libtelnet
@@ -20,6 +21,7 @@ void forwardEvent(telnet_t *telnet, telnet_event_t *event, void *user_data);
 void onRead(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf);
 static void allocBuffer(uv_handle_t *handle, std::size_t suggested_size,
                         uv_buf_t *buf);
+static int l_print(lua_State *L);
 
 // Logger for all connection objects
 std::shared_ptr<spdlog::logger> Connection::m_log =
@@ -259,6 +261,12 @@ void Connection::makeEnvironment(lua_State *L) {
   lua_newtable(L);
   lua_insert(L, 1);
   lua_setfield(L, 1, "connection");
+
+  // print() function that outputs using Connection::send()
+  lua_pushliteral(L, "print");
+  lua_pushcfunction(L, l_print);
+  lua_rawset(L, -3);
+
   if (luaL_newmetatable(L, "whatmud.connection_environment")) {
     // Populate the metatable
     // Set __index and __newindex to _G
@@ -270,6 +278,21 @@ void Connection::makeEnvironment(lua_State *L) {
     lua_rawset(L, -3);
   }
   lua_setmetatable(L, -2);
+}
+
+static int l_print(lua_State *L) {
+  std::string output;
+  std::string_view arg;
+  for (int i = 1; i <= lua_gettop(L); ++i) {
+    lua::arg(L, i, arg);
+    output += arg;
+    output += '\t';
+  }
+  output[output.size() - 1] = '\n';
+
+  auto *conn = *reinterpret_cast<Connection **>(lua_getextraspace(L));
+  conn->send(output);
+  return 0;
 }
 
 } // namespace whatmud

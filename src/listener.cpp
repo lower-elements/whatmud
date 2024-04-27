@@ -94,6 +94,11 @@ void TcpListener::onNewConnection() {
   // Create the coroutine on which the client handler runs
   lua_State *co = lua_newthread(L);
 
+  // Set the coroutine's extra-space to point to the Connection object for
+  // convenience
+  auto **extraspace = reinterpret_cast<Connection **>(lua_getextraspace(co));
+  *extraspace = conn;
+
   // Set the coroutine as the Connection's first uservalue
   lua_pushvalue(L, -1);
   lua_setiuservalue(L, -3, 1);
