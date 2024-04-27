@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cstring>
 #include <stdexcept>
 
 #include <fmt/core.h>
@@ -97,10 +98,25 @@ void TcpListener::onNewConnection() {
   lua_pushvalue(L, -1);
   lua_setiuservalue(L, -3, 1);
 
+  // Create the Connection's _ENV table
+  // makeEnvironment() expects the Connection object to be ontop of the stack
+  lua_pushvalue(L, -2);
+  lua_xmove(L, co, 1);
+  // 1 = connection
+  Connection::makeEnvironment(co);
+  // 1 = _ENV
+
   // Run the client handler on the coroutine
   lua_pushliteral(co, "client_handler");
   lua_rawget(co, LUA_REGISTRYINDEX);
+  lua_insert(co, 1);
+  //  1 = handler function, 2 = _ENV
   assert(lua_isfunction(co, 1));
+  // Set the environment
+  const char *upval_name = lua_setupvalue(co, 1, 1);
+  assert(std::strcmp(upval_name, "_ENV") == 0);
+  // 1 = handler function
+  // Start the handler
   int nresults;
   lua_resume(co, L, 0, &nresults);
 

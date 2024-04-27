@@ -82,6 +82,11 @@ private:
 
   static std::shared_ptr<spdlog::logger> m_log;
 
+public:
+  // Make the environment table for a Lua Connection coroutine, and leave it
+  // ontop of the stack
+  static void makeEnvironment(lua_State *L);
+
   // Friend functions used to call event handler member methods
   friend void onRead(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf);
   friend void forwardEvent(telnet_t *telnet, telnet_event_t *event,

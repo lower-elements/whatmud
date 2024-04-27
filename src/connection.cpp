@@ -255,4 +255,21 @@ static void allocBuffer(uv_handle_t *handle, std::size_t suggested_size,
   *buf = uv_buf_init(new char[suggested_size], suggested_size);
 }
 
+void Connection::makeEnvironment(lua_State *L) {
+  lua_newtable(L);
+  lua_insert(L, 1);
+  lua_setfield(L, 1, "connection");
+  if (luaL_newmetatable(L, "whatmud.connection_environment")) {
+    // Populate the metatable
+    // Set __index and __newindex to _G
+    lua_pushliteral(L, "__index");
+    lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);
+    lua_pushliteral(L, "__newindex");
+    lua_pushvalue(L, -2);
+    lua_rawset(L, -5);
+    lua_rawset(L, -3);
+  }
+  lua_setmetatable(L, -2);
+}
+
 } // namespace whatmud
