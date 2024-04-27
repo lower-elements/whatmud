@@ -284,7 +284,14 @@ static int l_print(lua_State *L) {
   std::string output;
   std::string_view arg;
   for (int i = 1; i <= lua_gettop(L); ++i) {
-    lua::arg(L, i, arg);
+    if (!(lua_isstring(L, i) || lua_isnumber(L, i))) {
+      // Convert to a string
+      lua_getglobal(L, "tostring");
+      lua_pushvalue(L, i);
+      lua_call(L, 1, 1);
+      lua_replace(L, i); // value at index i is now a string
+    }
+    lua::get(L, i, arg);
     output += arg;
     output += '\t';
   }
